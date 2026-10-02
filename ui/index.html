@@ -1,0 +1,450 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    color-scheme: dark;
+    --text: rgba(255, 255, 255, .94);
+    --text-2: rgba(255, 255, 255, .62);
+    --text-3: rgba(255, 255, 255, .38);
+    --hair: rgba(255, 255, 255, .075);
+    --surface: rgba(255, 255, 255, .05);
+    --surface-2: rgba(255, 255, 255, .09);
+    --accent: #6ee7d8;
+    --accent-2: #7cc4ff;
+    --listen: #ff7a8f;
+    --warn: #f5b84b;
+    --danger: #ff8f84;
+    --display: ui-rounded, "SF Pro Rounded", -apple-system, sans-serif;
+    --body: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+    --lvl: 0;
+    --ease: cubic-bezier(.2, .8, .2, 1);
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body {
+    height: 100%; background: transparent; overflow: hidden; color: var(--text);
+    font: 14px/1.5 var(--body); -webkit-font-smoothing: antialiased; -webkit-user-select: none; cursor: default;
+  }
+  button { font: inherit; color: inherit; border: 0; background: none; cursor: default; }
+  svg { display: block; }
+
+  /* Atmosphere: a faint glow behind the orb that follows Mac's state, and a fine grain. */
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: -1;
+    background: radial-gradient(420px 220px at 36px 26px, color-mix(in srgb, var(--glow, var(--accent)) 13%, transparent), transparent 70%);
+    transition: background .6s var(--ease);
+  }
+  body::after {
+    content: ""; position: fixed; inset: 0; pointer-events: none; opacity: .045; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  body.listening { --glow: var(--listen); }
+  body.approval { --glow: var(--warn); }
+  body.working, body.transcribing { --glow: var(--accent-2); }
+
+  #app { display: flex; flex-direction: column; height: 100%; }
+
+  /* ---------- the orb: Mac's presence ---------- */
+  .orb { position: relative; width: 18px; height: 18px; flex: none; }
+  .orb i, .orb b { position: absolute; inset: 0; border-radius: 50%; }
+  .orb i {
+    background: radial-gradient(circle at 34% 30%, #fff 0 8%, color-mix(in srgb, var(--accent) 80%, #fff) 22%, var(--accent) 48%, #0f766e 100%);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 55%, transparent);
+    animation: breathe 3.6s ease-in-out infinite;
+    transition: background .5s var(--ease), box-shadow .5s var(--ease);
+  }
+  .orb b { border: 1.5px solid var(--listen); opacity: 0; transform: scale(1); transition: opacity .2s; }
+  body.listening .orb i {
+    animation: none; transform: scale(calc(1 + var(--lvl) * .22));
+    background: radial-gradient(circle at 34% 30%, #fff 0 8%, #ffc2cc 24%, var(--listen) 52%, #9f1239 100%);
+    box-shadow: 0 0 calc(10px + var(--lvl) * 16px) color-mix(in srgb, var(--listen) 70%, transparent);
+    transition: transform .08s linear;
+  }
+  body.listening .orb b { opacity: calc(.25 + var(--lvl) * .6); transform: scale(calc(1.35 + var(--lvl) * .7)); transition: transform .08s linear; }
+  body.working .orb i, body.transcribing .orb i {
+    background: conic-gradient(var(--accent), var(--accent-2), #c4b5fd, var(--accent));
+    box-shadow: 0 0 12px color-mix(in srgb, var(--accent-2) 55%, transparent);
+    animation: spin 1.6s linear infinite;
+  }
+  body.approval .orb i {
+    background: radial-gradient(circle at 34% 30%, #fff 0 8%, #fde7b0 24%, var(--warn) 52%, #92400e 100%);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--warn) 60%, transparent);
+    animation: breathe 1.3s ease-in-out infinite;
+  }
+  @keyframes breathe { 50% { transform: scale(.88); opacity: .86; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---------- header ---------- */
+  header { display: flex; align-items: center; gap: 11px; height: 50px; padding: 0 12px 0 18px; position: relative; }
+  header::after {
+    content: ""; position: absolute; left: 18px; right: 18px; bottom: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--hair) 12%, var(--hair) 88%, transparent);
+  }
+  .who { display: flex; align-items: baseline; gap: 9px; min-width: 0; flex: 1; }
+  .name { font: 600 15px/1 var(--display); letter-spacing: .1px; }
+  .state { font-size: 12.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color .3s; }
+  body.listening .state { color: color-mix(in srgb, var(--listen) 85%, #fff); }
+  body.approval .state { color: color-mix(in srgb, var(--warn) 85%, #fff); }
+  .icon { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; color: var(--text-3); transition: background .15s, color .15s; }
+  .icon:hover { background: var(--surface-2); color: var(--text); }
+  .stop {
+    display: none; align-items: center; gap: 7px; height: 26px; padding: 0 11px 0 9px; border-radius: 13px; font-size: 12px; font-weight: 500;
+    color: var(--text-2); background: var(--surface); box-shadow: inset 0 0 0 1px var(--hair); margin-right: 4px;
+  }
+  .stop:hover { color: var(--text); background: var(--surface-2); }
+  .stop span { width: 8px; height: 8px; border-radius: 2px; background: currentColor; }
+  body.working .stop, body.transcribing .stop, body.approval .stop { display: inline-flex; }
+
+  /* ---------- conversation ---------- */
+  #log {
+    flex: 1; overflow-y: auto; padding: 16px 20px 18px; display: flex; flex-direction: column; gap: 12px;
+    -webkit-user-select: text; -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 10px), transparent);
+  }
+  #log::-webkit-scrollbar { width: 0; }
+  .msg { max-width: 86%; white-space: pre-wrap; word-wrap: break-word; animation: rise .32s var(--ease) both; }
+  .user {
+    align-self: flex-end; padding: 8px 13px; border-radius: 16px 16px 5px 16px;
+    background: var(--surface-2); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .04); color: var(--text);
+  }
+  .draft { opacity: .6; }
+  .draft::after {
+    content: ""; display: inline-block; width: 2px; height: 1.05em; margin-left: 3px; vertical-align: -2px;
+    border-radius: 1px; background: var(--listen); animation: blink 1s infinite;
+  }
+  .assistant { align-self: flex-start; font-size: 14.5px; line-height: 1.55; color: var(--text); padding-left: 1px; }
+  .status {
+    align-self: flex-start; display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: var(--text-3);
+    animation: rise .25s var(--ease) both;
+  }
+  .status .dots { display: none; gap: 3px; }
+  .status .dots i { width: 4px; height: 4px; border-radius: 50%; background: var(--accent-2); animation: blink 1.1s infinite; }
+  .status .dots i:nth-child(2) { animation-delay: .15s; }
+  .status .dots i:nth-child(3) { animation-delay: .3s; }
+  body.working .status:last-child .dots, body.transcribing .status:last-child .dots { display: inline-flex; }
+  @keyframes blink { 0%, 100% { opacity: .25; } 40% { opacity: 1; } }
+  .error {
+    align-self: stretch; display: flex; gap: 9px; align-items: flex-start; font-size: 13px; color: var(--danger);
+    padding: 9px 12px; border-radius: 10px; background: color-mix(in srgb, var(--danger) 8%, transparent);
+    animation: rise .25s var(--ease) both;
+  }
+  .error svg { flex: none; margin-top: 2px; }
+  @keyframes rise { from { opacity: 0; transform: translateY(5px); } }
+
+  /* ---------- asking permission ---------- */
+  .card {
+    align-self: stretch; padding: 14px 14px 12px; border-radius: 14px; animation: rise .3s var(--ease) both;
+    background: color-mix(in srgb, var(--warn) 7%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 24%, transparent);
+  }
+  .card h4 { font: 600 14px/1.4 var(--body); margin-bottom: 9px; }
+  .card pre {
+    font: 12px/1.5 var(--mono); color: var(--text-2); white-space: pre-wrap; word-break: break-word; max-height: 140px; overflow: auto;
+    background: rgba(0, 0, 0, .22); padding: 9px 11px; border-radius: 9px; margin-bottom: 12px; -webkit-user-select: text;
+  }
+  .card .row { display: flex; align-items: center; gap: 8px; }
+  .card .row small { flex: 1; font-size: 12px; color: var(--text-3); }
+  .card button { height: 30px; padding: 0 14px; border-radius: 9px; font-size: 13px; font-weight: 500; transition: background .15s, filter .15s; }
+  .deny { color: var(--text-2); background: var(--surface); box-shadow: inset 0 0 0 1px var(--hair); }
+  .deny:hover { background: var(--surface-2); color: var(--text); }
+  .allow { background: var(--warn); color: #1f1300; font-weight: 600; }
+  .allow:hover { filter: brightness(1.08); }
+  .card .verdict { display: none; align-items: center; gap: 7px; font-size: 12.5px; color: var(--text-3); }
+  .card.done { padding: 10px 14px; background: transparent; box-shadow: inset 0 0 0 1px var(--hair); }
+  .card.done pre, .card.done .row { display: none; }
+  .card.done h4 { font-weight: 500; color: var(--text-2); margin-bottom: 4px; font-size: 13px; }
+  .card.done .verdict { display: flex; }
+
+  /* ---------- voice setup ---------- */
+  .enroll {
+    align-self: stretch; padding: 16px 16px 14px; border-radius: 14px; animation: rise .3s var(--ease) both;
+    background: color-mix(in srgb, var(--accent) 6%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+  .enroll .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .enroll .label { font-size: 12px; color: var(--text-2); font-weight: 500; }
+  .enroll .steps { display: flex; gap: 5px; }
+  .enroll .steps i { width: 18px; height: 3px; border-radius: 2px; background: var(--surface-2); transition: background .3s; }
+  .enroll .steps i.on { background: var(--accent); }
+  .enroll .say { font: 500 18px/1.45 var(--display); color: var(--text); margin-bottom: 12px; -webkit-user-select: text; }
+  .enroll .meter { height: 3px; border-radius: 2px; background: var(--surface); overflow: hidden; }
+  .enroll .meter i { display: block; height: 100%; width: calc(var(--lvl) * 100%); background: var(--listen); border-radius: 2px; transition: width .08s linear; }
+  body:not(.listening) .enroll .meter i { width: 0; }
+  .enroll .note { font-size: 12.5px; color: var(--listen); margin-top: 9px; }
+  .enroll .note:empty { display: none; }
+  .enroll.finished { padding: 12px 14px; }
+  .enroll.finished .say { font: 400 14px/1.5 var(--body); margin: 0; }
+  .enroll.finished .steps, .enroll.finished .meter, .enroll.finished .note { display: none; }
+
+  /* ---------- first open ---------- */
+  #empty { margin: auto 0; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 6px 0 14px; }
+  #empty .orb { width: 42px; height: 42px; margin-bottom: 16px; animation: rise .5s var(--ease) both; }
+  #empty .orb i { box-shadow: 0 0 26px color-mix(in srgb, var(--accent) 45%, transparent); }
+  #empty h1 { font: 600 20px/1.3 var(--display); letter-spacing: .1px; margin-bottom: 5px; animation: rise .5s .05s var(--ease) both; }
+  #empty p { font-size: 13px; color: var(--text-3); margin-bottom: 20px; animation: rise .5s .1s var(--ease) both; }
+  .suggest { width: 320px; display: flex; flex-direction: column; gap: 2px; }
+  .suggest button {
+    display: flex; align-items: center; gap: 11px; width: 100%; height: 36px; padding: 0 12px; border-radius: 10px;
+    font-size: 13.5px; color: var(--text-2); text-align: left; transition: background .15s, color .15s; animation: rise .5s var(--ease) both;
+  }
+  .suggest button:nth-child(1) { animation-delay: .14s; }
+  .suggest button:nth-child(2) { animation-delay: .18s; }
+  .suggest button:nth-child(3) { animation-delay: .22s; }
+  .suggest button:hover { background: var(--surface); color: var(--text); }
+  .suggest button svg:first-child { color: var(--accent); opacity: .85; flex: none; }
+  .suggest button span { flex: 1; }
+  .suggest button .go { opacity: 0; transform: translateX(-3px); transition: opacity .15s, transform .15s; color: var(--text-3); }
+  .suggest button:hover .go { opacity: 1; transform: none; }
+
+  /* ---------- composer ---------- */
+  footer { padding: 4px 14px 14px; position: relative; }
+  .composer {
+    display: flex; align-items: flex-end; gap: 4px; padding: 5px; border-radius: 15px;
+    background: var(--surface); box-shadow: inset 0 0 0 1px var(--hair); transition: box-shadow .2s, background .2s;
+  }
+  .composer:focus-within { background: rgba(255, 255, 255, .065); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 38%, transparent), 0 0 0 4px color-mix(in srgb, var(--accent) 7%, transparent); }
+  textarea {
+    flex: 1; resize: none; border: 0; outline: none; background: transparent; color: var(--text);
+    font: 14px/1.45 var(--body); max-height: 110px; padding: 6px 4px; -webkit-user-select: text;
+  }
+  textarea::placeholder { color: var(--text-3); }
+  .round { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; flex: none; position: relative; transition: background .15s, color .15s, transform .2s var(--ease), opacity .2s; }
+  #mic { color: var(--text-3); }
+  #mic:hover { color: var(--text); background: var(--surface-2); }
+  body.listening #mic { color: var(--listen); background: color-mix(in srgb, var(--listen) 14%, transparent); }
+  body.listening #mic::after {
+    content: ""; position: absolute; inset: -3px; border-radius: 12px; box-shadow: 0 0 0 1.5px var(--listen);
+    opacity: calc(.2 + var(--lvl) * .7); transform: scale(calc(1 + var(--lvl) * .12));
+  }
+  #send { background: var(--accent); color: #042f2e; }
+  #send:disabled { opacity: 0; transform: scale(.7); pointer-events: none; }
+  .toast {
+    position: absolute; left: 50%; bottom: 66px; transform: translate(-50%, 6px); opacity: 0; pointer-events: none;
+    padding: 6px 12px; border-radius: 10px; font-size: 12.5px; color: var(--text); white-space: nowrap;
+    background: rgba(40, 40, 46, .92); box-shadow: 0 6px 20px rgba(0, 0, 0, .35), inset 0 0 0 1px var(--hair);
+    transition: opacity .2s, transform .25s var(--ease);
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+</style>
+</head>
+<body class="idle">
+<div id="app">
+  <header>
+    <div class="orb" id="orb"><b></b><i></i></div>
+    <div class="who"><span class="name" id="who">Mac</span><span class="state" id="state">Waking up</span></div>
+    <button class="stop" id="stop" title="Stop"><span></span>Stop</button>
+    <button class="icon" id="newchat" title="New conversation">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+    </button>
+    <button class="icon" id="close" title="Close">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </header>
+
+  <div id="log"></div>
+
+  <footer>
+    <div class="toast" id="toast"></div>
+    <div class="composer">
+      <button class="round" id="mic" title="Talk">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>
+      </button>
+      <textarea id="input" rows="1" placeholder="Ask anything"></textarea>
+      <button class="round" id="send" title="Send" disabled>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5"/></svg>
+      </button>
+    </div>
+  </footer>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const post = (type, data = {}) => window.webkit.messageHandlers.companion.postMessage(JSON.stringify({ type, ...data }));
+const log = $('#log'), input = $('#input'), root = document.documentElement;
+const STATE_TEXT = { idle: 'Ready', listening: 'Listening', transcribing: 'Thinking', working: 'Working', approval: 'Needs your OK' };
+const ICON = {
+  play: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
+  eye: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>',
+  folder: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>',
+  go: '<svg class="go" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
+  warn: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.5"/></svg>',
+  yes: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  no: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+};
+const SUGGESTIONS = [['play', 'Play some focus music'], ['eye', "What's on my screen?"], ['folder', 'Open my Downloads folder']];
+let state = 'idle', pending = null, names = { name: 'Mac', user: '' }, toastTimer;
+
+const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function scrollDown() { log.scrollTop = log.scrollHeight; }
+
+function showEmpty() {
+  const hello = names.user ? `What can I do for you, ${esc(names.user)}?` : 'What can I do for you?';
+  log.innerHTML = `<div id="empty">
+      <div class="orb"><b></b><i></i></div>
+      <h1>${hello}</h1>
+      <p>Talk or type. I can use your Mac for you.</p>
+      <div class="suggest">${SUGGESTIONS.map(([i, t]) => `<button>${ICON[i]}<span>${esc(t)}</span>${ICON.go}</button>`).join('')}</div>
+    </div>`;
+  log.querySelectorAll('.suggest button').forEach(b => b.onclick = () => send(b.textContent.trim()));
+}
+
+function add(role, text) {
+  $('#empty')?.remove();
+  if (role === 'user') $('#draft')?.remove();  // the live draft becomes the real message
+  const d = document.createElement('div');
+  if (role === 'error') {
+    d.className = 'error';
+    d.innerHTML = ICON.warn + '<span></span>';
+    d.querySelector('span').textContent = text;
+  } else {
+    d.className = 'msg ' + role;
+    d.textContent = text;
+  }
+  log.appendChild(d);
+  scrollDown();
+  return d;
+}
+
+function answer(ok, via) {
+  if (!pending) return;
+  const { id, el } = pending;
+  pending = null;
+  el.classList.add('done');
+  el.querySelector('.verdict').innerHTML = ok ? ICON.yes + 'Allowed' : ICON.no + 'Not allowed';
+  post('answer', { id, ok, via });
+}
+
+function send(text) {
+  text = (text ?? input.value).trim();
+  if (!text) return;
+  post('send', { text });
+  input.value = '';
+  autosize();
+}
+
+function autosize() {
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 110) + 'px';
+  $('#send').disabled = !input.value.trim();
+}
+
+window.ui = {
+  init(o) {
+    names = o;
+    $('#who').textContent = o.name;
+    input.placeholder = `Ask ${o.name} anything`;
+    showEmpty();
+  },
+  add,
+  status(text) {
+    $('#empty')?.remove();
+    const last = log.lastElementChild;
+    if (last && last.classList.contains('status')) {
+      last.querySelector('span:last-child').textContent = text;
+    } else {
+      const d = document.createElement('div');
+      d.className = 'status';
+      d.innerHTML = '<span class="dots"><i></i><i></i><i></i></span><span></span>';
+      d.querySelector('span:last-child').textContent = text;
+      log.appendChild(d);
+    }
+    scrollDown();
+  },
+  setState(s, text) {
+    state = s;
+    document.body.className = s;
+    const label = text || STATE_TEXT[s] || s;
+    $('#state').textContent = label.charAt(0).toUpperCase() + label.slice(1);
+    if (s !== 'listening') root.style.setProperty('--lvl', 0);
+  },
+  level(x) { root.style.setProperty('--lvl', Math.max(0, Math.min(1, x)).toFixed(3)); },
+  approval(id, title, detail) {
+    $('#empty')?.remove();
+    const el = document.createElement('div');
+    el.className = 'card';
+    el.innerHTML = `<h4></h4>${detail ? '<pre></pre>' : ''}
+      <div class="row"><small>or just say yes or no</small>
+        <button class="deny">Don't</button><button class="allow">Allow</button></div>
+      <div class="verdict"></div>`;
+    el.querySelector('h4').textContent = title;
+    if (detail) el.querySelector('pre').textContent = detail;
+    el.querySelector('.allow').onclick = () => answer(true, 'click');
+    el.querySelector('.deny').onclick = () => answer(false, 'click');
+    log.appendChild(el);
+    pending = { id, el };
+    scrollDown();
+  },
+  answered(ok) { answer(ok, 'voice'); },
+  cancelCard() {
+    if (!pending) return;
+    pending.el.classList.add('done');
+    pending.el.querySelector('.verdict').textContent = 'Cancelled';
+    pending = null;
+  },
+  enroll(step, total, sentence, note) {
+    $('#empty')?.remove();
+    let el = $('#enroll');
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'enroll'; el.id = 'enroll';
+      el.innerHTML = `<div class="top"><span class="label">Voice setup · read this out loud</span><span class="steps"></span></div>
+        <div class="say"></div><div class="meter"><i></i></div><div class="note"></div>`;
+      log.appendChild(el);
+    }
+    el.querySelector('.steps').innerHTML = Array.from({ length: total }, (_, i) => `<i class="${i < step ? 'on' : ''}"></i>`).join('');
+    el.querySelector('.say').textContent = sentence;
+    el.querySelector('.note').textContent = note || '';
+    scrollDown();
+  },
+  enrollDone(message) {
+    const el = $('#enroll');
+    if (!el) return;
+    el.id = '';
+    el.classList.add('finished');
+    el.querySelector('.label').textContent = 'Voice setup';
+    el.querySelector('.say').textContent = message;
+  },
+  clear() { pending = null; showEmpty(); },
+  draft(text) {  // your words while you're still talking
+    let d = $('#draft');
+    if (!text) { d?.remove(); return; }
+    $('#empty')?.remove();
+    if (!d) {
+      d = document.createElement('div');
+      d.id = 'draft'; d.className = 'msg user draft';
+      log.appendChild(d);
+    }
+    d.textContent = text;
+    scrollDown();
+  },
+  focus() { input.focus(); },
+  hint(text) {
+    const t = $('#toast');
+    t.textContent = text;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+  },
+  setWake() {},  // kept for the app; the panel no longer prints shortcuts or wake words
+};
+
+input.addEventListener('input', autosize);
+input.addEventListener('keydown', e => {
+  if (state === 'listening' && e.key.length === 1) post('typing');
+  if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.isComposing) { e.preventDefault(); send(); }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { e.preventDefault(); pending ? answer(false, 'esc') : post('hide'); }
+  else if (e.key === 'Enter' && e.metaKey && pending) { e.preventDefault(); answer(true, 'cmd-enter'); }
+  else if (e.key === '.' && e.metaKey) { e.preventDefault(); post('stop'); }
+});
+$('#send').onclick = () => send();
+$('#mic').onclick = () => post('mic');
+$('#stop').onclick = () => post('stop');
+$('#close').onclick = () => post('hide');
+$('#newchat').onclick = () => post('newchat');
+
+showEmpty();
+post('ready');
+</script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+{
+  "name": "Mac",
+  "user_name": "",
+  "model": "sonnet",
+  "hotkey": "ctrl+alt+space",
+  "speak_replies": true,
+  "voice": "",
+  "voice_rate": 0,
+  "whisper_model": "mlx-community/whisper-large-v3-turbo",
+  "language": "auto",
+  "vocabulary": [],
+  "wake_word": true,
+  "wake_model": "mlx-community/whisper-base.en-mlx",
+  "mic": "",
+  "wake_aliases": [
+    "mack"
+  ],
+  "follow_up": true,
+  "push_to_talk": "option",
+  "fast_path": true,
+  "jev_safety": true,
+  "stream_speech": true,
+  "early_final": true,
+  "ax_tools": true,
+  "voice_lock": true,
+  "voice_match": 0.75,
+  "effort": "low",
+  "step_pause": 0.5,
+  "fresh_after_min": 10,
+  "ptt_sounds": true,
+  "glow": true,
+  "languages": [
+    "en"
+  ],
+  "voices": {
+    "ta": "Vani",
+    "ml": "Rishi"
+  },
+  "preview_model": "mlx-community/whisper-base-mlx",
+  "one_pass_stt": true,
+  "chat_model": "haiku",
+  "early_jev": true,
+  "keep_warm": true,
+  "natural": true,
+  "voice_adapt": true,
+  "kill_switch_file": "~/.mac-companion/STOP",
+  "cliclick": ""
+}

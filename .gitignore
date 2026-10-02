@@ -1,0 +1,17 @@
+.env
+.venv/
+__pycache__/
+.lock
+.watchdog
+companion.log
+voiceprint.npy
+models/
+eval/audio/
+.pytest_cache/
+.worktrees/
+# Your own copies, made from the *.example files on first start
+config.json
+persona.md
+memory.md
+docs/plans/
+hands/bin/
